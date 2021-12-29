@@ -1,4 +1,5 @@
-(use-modules (gnu packages lisp))
+(use-modules (gnu packages lisp)
+             (gnu packages lisp-xyz))
 
 (packages->manifest
- (list sbcl))
+ (list sbcl sbcl-hunchentoot))
