@@ -10,7 +10,7 @@ Use at your own risk.
 
 Drop into a development environment with
 ```
-guix shell -m guix.scm
+guix shell
 ```
 Start GeneNetwork (listening on port 8080) and the slynk REPL server
 (listening on port 4005) using
