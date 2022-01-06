@@ -12,7 +12,7 @@ Drop into a development environment with
 ```
 guix shell
 ```
-Start GeneNetwork (listening on port 8080) and the slynk REPL server
+Start the GeneNetwork web server (listening on port 8080) and the slynk REPL server
 (listening on port 4005) using
 ```
 sbcl --load run.lisp
