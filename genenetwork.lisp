@@ -1,5 +1,5 @@
 (defpackage :genenetwork
-  (:use :common-lisp :hunchentoot)
+  (:use :common-lisp :cl-who :hunchentoot :parenscript)
   (:import-from :legit :current-commit)
   (:import-from :cl-json :encode-json-to-string)
   (:export :main))
@@ -17,6 +17,20 @@
 (hunchentoot:define-easy-handler (home :uri "/") ()
   (setf (hunchentoot:content-type*) "text/plain; charset=utf-8")
   "Hello World!")
+
+;; parenscript puts strings within single quotes. So, use double quote
+;; for HTML attributes.
+(setq cl-who:*attribute-quote-char* #\")
+
+(hunchentoot:define-easy-handler (home-ps :uri "/ps") ()
+  (with-html-output-to-string (str)
+    (:html
+     (:head (:title "Parenscript hello world"))
+     (:body (:h2 "Parenscript hello world")
+            "Please click the link: "
+            (:a :href "#"
+                :onclick (ps (alert "Hello World!"))
+                "Hello World!")))))
 
 (defvar *acceptor*
   (make-instance 'hunchentoot:easy-acceptor :port 8080))
