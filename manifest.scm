@@ -1,8 +1,15 @@
 (specifications->manifest
  (list "sbcl"
+       "sbcl-alexandria"
+       "sbcl-cl-fad"
        "sbcl-cl-json"
+       "sbcl-cl-str"
        "sbcl-cl-who"
        "sbcl-hunchentoot"
+       "sbcl-ironclad"
        "sbcl-legit"
+       "sbcl-listopia"
+       "sbcl-lmdb"
        "sbcl-parenscript"
-       "sbcl-slynk"))
+       "sbcl-slynk"
+       "sbcl-trivia"))
