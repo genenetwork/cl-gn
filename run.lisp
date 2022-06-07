@@ -6,6 +6,7 @@
 
 ;; Load the genenetwork system and start the web server
 (asdf:load-system :genenetwork)
+(asdf:load-system :genodb)
 (genenetwork:main)
 
 ;; Start the REPL server
