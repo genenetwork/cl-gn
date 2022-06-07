@@ -169,7 +169,6 @@ genotype DB."
          (metadata (genotype-db-metadata-get db hash)))
     (make-genotype-db-matrix
      :db db
-     ;; TODO: Decide on endianness.
      :nrows (lmdb:octets-to-uint64
              (assoc-ref metadata "nrows"))
      :ncols (lmdb:octets-to-uint64
