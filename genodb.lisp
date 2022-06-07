@@ -114,30 +114,52 @@ blob of HASH."
 (defvar *blob-hash-digest*
   :sha256)
 
-(defun bv-hash (bv)
-  "Return hash of BV."
-  (ironclad:digest-sequence *blob-hash-digest* bv))
+(defun write-bytevector-with-length (bv stream)
+  "Write length of BV followed by BV itself to STREAM. The length is
+written as a little endian 64-bit unsigned integer."
+  (write-sequence (lmdb:uint64-to-octets (length bv)) stream)
+  (write-sequence bv stream))
+
+(defun bv-hash (bv &optional metadata)
+  "Return hash of BV + METADATA. METADATA is an association list mapping
+string keys to string, uint64 or bytevector values."
+  (ironclad:with-digesting-stream (stream *blob-hash-digest*)
+    ;; Write bytevector.
+    (write-bytevector-with-length bv stream)
+    ;; Write metadata.
+    (mapc (lambda-match
+            ((cons key value)
+             (write-bytevector-with-length (lmdb:string-to-octets key)
+                                           stream)
+             (write-bytevector-with-length
+              (etypecase value
+                (string (lmdb:string-to-octets value))
+                ((unsigned-byte 64) (lmdb:uint64-to-octets value))
+                ((vector (unsigned-byte 8)) value))
+              stream)))
+          metadata)))
 
 (defun genotype-db-get (db hash)
   "Get bytevector with HASH from genotype DB."
   (lmdb:g3t db hash))
 
-(defun (setf genotype-db-get) (bv db)
-  "Put BV, a bytevector, into DB."
-  (let ((hash (bv-hash bv)))
-    ;; Put bytevector into db. Do nothing if it is already in db.
+(defun genotype-db-put (db bv &optional metadata)
+  "Put BV, a bytevector, into DB. Associate METADATA, an association
+list of metadata, with BV. Return the hash."
+  (let ((hash (bv-hash bv metadata)))
+    ;; Put bytevector and metadata into db. Do nothing if it is
+    ;; already in db.
     (unless (genotype-db-get db hash)
-      (lmdb:put db hash bv))
-    bv))
+      (lmdb:put db hash bv)
+      (mapc (lambda-match
+              ((cons key value)
+               (lmdb:put db (metadata-key hash key) value)))
+            metadata))
+    hash))
 
 (defun genotype-db-metadata-get (db hash key)
   "Get metadata associated with KEY, HASH from genotype DB."
   (lmdb:g3t db (metadata-key hash key)))
-
-(defun (setf genotype-db-metadata-get) (value db hash key)
-  "Associate metadata KEY, VALUE with HASH in genotype DB."
-  (lmdb:put db (metadata-key hash key) value)
-  value)
 
 (defun genotype-db-current-matrix (db)
   "Return the hash of the current matrix in genotype matrix DB."
@@ -162,27 +184,26 @@ blob of HASH."
   (let ((matrix (genotype-matrix-matrix matrix)))
     (match (array-dimensions matrix)
       ((list nrows ncols)
-       (let ((matrix-hash
-               (bv-hash
-                (setf (genotype-db-get db)
-                      (with-octet-output-stream (stream)
-                        (dotimes (i nrows)
-                          (write-sequence
-                           (bv-hash
-                            (setf (genotype-db-get db)
-                                  (map '(vector (unsigned-byte 8))
-                                       (lambda (genotype)
-                                         (case genotype
-                                           ((maternal) 0)
-                                           ((paternal) 1)
-                                           ((heterozygous) 2)
-                                           ((unknown) 3)
-                                           (t (error 'unknown-genotype-matrix-data))))
-                                       (matrix-row matrix i))))
-                           stream)))))))
-         (setf (genotype-db-metadata-get db matrix-hash "nrows") nrows
-               (genotype-db-metadata-get db matrix-hash "ncols") ncols
-               (genotype-db-current-matrix db) matrix-hash))))))
+       (setf (genotype-db-current-matrix db)
+             (genotype-db-put
+              db
+              (with-octet-output-stream (stream)
+                (dotimes (i nrows)
+                  (write-sequence
+                   (genotype-db-put
+                    db
+                    (map '(vector (unsigned-byte 8))
+                         (lambda (genotype)
+                           (case genotype
+                             ((maternal) 0)
+                             ((paternal) 1)
+                             ((heterozygous) 2)
+                             ((unknown) 3)
+                             (t (error 'unknown-genotype-matrix-data))))
+                         (matrix-row matrix i)))
+                   stream)))
+              `(("nrows" . ,nrows)
+                ("ncols" . ,ncols))))))))
 
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
