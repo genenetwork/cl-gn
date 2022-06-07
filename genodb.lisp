@@ -161,28 +161,28 @@ blob of HASH."
   "Set genotype MATRIX as the current matrix in genotype matrix DB."
   (let ((matrix (genotype-matrix-matrix matrix)))
     (match (array-dimensions matrix)
-           ((list nrows ncols)
-            (let ((matrix-hash
-                   (bv-hash
-                    (setf (genotype-db-get db)
-                          (with-octet-output-stream (stream)
-                            (dotimes (i nrows)
-                              (write-sequence
-                               (bv-hash
-                                (setf (genotype-db-get db)
-                                      (map '(vector (unsigned-byte 8))
-                                           (lambda (genotype)
-                                             (case genotype
-                                               ((maternal) 0)
-                                               ((paternal) 1)
-                                               ((heterozygous) 2)
-                                               ((unknown) 3)
-                                               (t (error 'unknown-genotype-matrix-data))))
-                                           (matrix-row matrix i))))
-                               stream)))))))
-              (setf (genotype-db-metadata-get db matrix-hash "nrows") nrows
-                    (genotype-db-metadata-get db matrix-hash "ncols") ncols
-                    (genotype-db-current-matrix db) matrix-hash))))))
+      ((list nrows ncols)
+       (let ((matrix-hash
+               (bv-hash
+                (setf (genotype-db-get db)
+                      (with-octet-output-stream (stream)
+                        (dotimes (i nrows)
+                          (write-sequence
+                           (bv-hash
+                            (setf (genotype-db-get db)
+                                  (map '(vector (unsigned-byte 8))
+                                       (lambda (genotype)
+                                         (case genotype
+                                           ((maternal) 0)
+                                           ((paternal) 1)
+                                           ((heterozygous) 2)
+                                           ((unknown) 3)
+                                           (t (error 'unknown-genotype-matrix-data))))
+                                       (matrix-row matrix i))))
+                           stream)))))))
+         (setf (genotype-db-metadata-get db matrix-hash "nrows") nrows
+               (genotype-db-metadata-get db matrix-hash "ncols") ncols
+               (genotype-db-current-matrix db) matrix-hash))))))
 
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
