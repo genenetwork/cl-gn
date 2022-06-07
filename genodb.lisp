@@ -330,13 +330,17 @@ list of metadata, with BV. Return the hash."
     ;; Write genotype matrix into genotype database.
     (with-genotype-db (db genotype-database :write t)
       (setf (genotype-db-matrix db) matrix))
-    ;; Read every row back and verify.
+    ;; Read written data back and verify.
     (with-genotype-db (db genotype-database)
       (let ((db-matrix (genotype-db-matrix db)))
-        (unless (all (lambda (i)
-                       (equalp (matrix-row (genotype-matrix-matrix matrix) i)
-                               (genotype-db-matrix-row-ref db-matrix i)))
-                     (iota (genotype-db-matrix-nrows db-matrix)))
+        (unless (and (all (lambda (i)
+                            (equalp (matrix-row (genotype-matrix-matrix matrix) i)
+                                    (genotype-db-matrix-row-ref db-matrix i)))
+                          (iota (genotype-db-matrix-nrows db-matrix)))
+                     (all (lambda (i)
+                            (equalp (matrix-column (genotype-matrix-matrix matrix) i)
+                                    (genotype-db-matrix-column-ref db-matrix i)))
+                          (iota (genotype-db-matrix-ncols db-matrix))))
           (format *error-output*
                   "Rereading and verifying genotype matrix written to \"~a\" failed.
 This is a bug. Please report it.
