@@ -92,7 +92,7 @@ invoked as (FUNCTION INDEX) for INDEX = 0, 1, 2, ..., n-1."
   matrix metadata)
 
 (defstruct genotype-db-matrix
-  db nrows ncols)
+  db hash nrows ncols)
 
 (defmacro with-genotype-db ((db database-directory &key write) &body body)
   (with-gensyms (env)
@@ -174,6 +174,7 @@ list of metadata, with BV. Return the hash."
   (let ((hash (genotype-db-current-matrix db)))
     (make-genotype-db-matrix
      :db db
+     :hash hash
      :nrows (lmdb:octets-to-uint64
              (genotype-db-metadata-get db hash "nrows"))
      :ncols (lmdb:octets-to-uint64
@@ -229,7 +230,7 @@ list of metadata, with BV. Return the hash."
       (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
         (make-array hash-length
                     :element-type '(unsigned-byte 8)
-                    :displaced-to (genotype-db-get db (genotype-db-current-matrix db))
+                    :displaced-to (genotype-db-get db (genotype-db-matrix-hash matrix))
                     :displaced-index-offset (* i hash-length)))))))
 
 ;;;
