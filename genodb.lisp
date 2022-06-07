@@ -208,24 +208,29 @@ list of metadata, with BV. Return the hash."
               `(("nrows" . ,nrows)
                 ("ncols" . ,ncols))))))))
 
+(defun decode-genotype-vector (bv)
+  "Decode BV to genotype vector."
+  (map 'vector
+       (lambda (integer)
+         (case integer
+           ((0) 'maternal)
+           ((1) 'paternal)
+           ((2) 'heterozygous)
+           ((3) 'unknown)
+           (t (error 'unknown-genotype-matrix-data))))
+       bv))
+
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
   (let ((db (genotype-db-matrix-db matrix)))
-    (map 'vector
-         (lambda (integer)
-           (case integer
-             ((0) 'maternal)
-             ((1) 'paternal)
-             ((2) 'heterozygous)
-             ((3) 'unknown)
-             (t (error 'unknown-genotype-matrix-data))))
-         (genotype-db-get
-          db
-          (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
-            (make-array hash-length
-                        :element-type '(unsigned-byte 8)
-                        :displaced-to (genotype-db-get db (genotype-db-current-matrix db))
-                        :displaced-index-offset (* i hash-length)))))))
+    (decode-genotype-vector
+     (genotype-db-get
+      db
+      (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
+        (make-array hash-length
+                    :element-type '(unsigned-byte 8)
+                    :displaced-to (genotype-db-get db (genotype-db-current-matrix db))
+                    :displaced-index-offset (* i hash-length)))))))
 
 ;;;
 ;;; Geno files
