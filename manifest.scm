@@ -12,4 +12,5 @@
        "sbcl-lmdb"
        "sbcl-parenscript"
        "sbcl-slynk"
-       "sbcl-trivia"))
+       "sbcl-trivia"
+       "sbcl-trivial-utf-8"))

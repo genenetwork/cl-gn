@@ -17,7 +17,8 @@
                :listopia
                :lmdb
                :str
-               :trivia)
+               :trivia
+               :trivial-utf-8)
   :components ((:file "genodb"))
   :build-operation "program-op"
   :build-pathname "genodb"

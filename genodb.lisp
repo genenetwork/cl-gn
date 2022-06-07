@@ -7,6 +7,7 @@
    :concat :contains? :join :s-rest :split :starts-with?
    :trim-right :words)
   (:import-from :trivia :lambda-match :match)
+  (:import-from :trivial-utf-8 :string-to-utf-8-bytes)
   (:export :main))
 
 (in-package :genodb)
@@ -117,7 +118,7 @@ invoked as (FUNCTION INDEX) for INDEX = 0, 1, 2, ..., n-1."
 blob of HASH."
   (concatenate '(vector (unsigned-byte 8))
                hash
-               (lmdb:string-to-octets (concat ":" key))))
+               (string-to-utf-8-bytes (concat ":" key))))
 
 (defvar *blob-hash-digest*
   :sha256)
@@ -137,11 +138,11 @@ string keys to string, uint64 or bytevector values."
     ;; Write metadata.
     (mapc (lambda-match
             ((cons key value)
-             (write-bytevector-with-length (lmdb:string-to-octets key)
+             (write-bytevector-with-length (string-to-utf-8-bytes key)
                                            stream)
              (write-bytevector-with-length
               (etypecase value
-                (string (lmdb:string-to-octets value))
+                (string (string-to-utf-8-bytes value))
                 ((unsigned-byte 64) (lmdb:uint64-to-octets value))
                 ((vector (unsigned-byte 8)) value))
               stream)))
@@ -171,11 +172,11 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-current-matrix (db)
   "Return the hash of the current matrix in genotype matrix DB."
-  (lmdb:g3t db "current"))
+  (lmdb:g3t db (string-to-utf-8-bytes "current")))
 
 (defun (setf genotype-db-current-matrix) (hash db)
   "Set HASH as the current matrix in genotype matrix DB."
-  (lmdb:put db "current" hash))
+  (lmdb:put db (string-to-utf-8-bytes "current") hash))
 
 (defun genotype-db-matrix (db hash)
   "Return the matrix identified by HASH from genotype matrix DB."
