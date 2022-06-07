@@ -199,27 +199,26 @@ list of metadata, with BV. Return the hash."
            (t (error 'unknown-genotype-matrix-data))))
        vector))
 
-(defun (setf genotype-db-matrix) (matrix db)
-  "Set genotype MATRIX as the current matrix in genotype matrix DB."
+(defun genotype-db-matrix-put (db matrix)
+  "Put genotype MATRIX into DB and return the hash."
   (let ((matrix (genotype-matrix-matrix matrix)))
     (match (array-dimensions matrix)
       ((list nrows ncols)
-       (setf (genotype-db-current-matrix db)
+       (genotype-db-put
+        db
+        (with-octet-output-stream (stream)
+          (dotimes (i nrows)
+            (write-sequence
              (genotype-db-put
-              db
-              (with-octet-output-stream (stream)
-                (dotimes (i nrows)
-                  (write-sequence
-                   (genotype-db-put
-                    db (encode-genotype-vector (matrix-row matrix i)))
-                   stream))
-                (dotimes (j ncols)
-                  (write-sequence
-                   (genotype-db-put
-                    db (encode-genotype-vector (matrix-column matrix j)))
-                   stream)))
-              `(("nrows" . ,nrows)
-                ("ncols" . ,ncols))))))))
+              db (encode-genotype-vector (matrix-row matrix i)))
+             stream))
+          (dotimes (j ncols)
+            (write-sequence
+             (genotype-db-put
+              db (encode-genotype-vector (matrix-column matrix j)))
+             stream)))
+        `(("nrows" . ,nrows)
+          ("ncols" . ,ncols)))))))
 
 (defun decode-genotype-vector (bv)
   "Decode BV to genotype vector."
@@ -328,10 +327,9 @@ list of metadata, with BV. Return the hash."
   (let ((matrix (read-geno-file geno-file)))
     ;; Write genotype matrix into genotype database.
     (with-genotype-db (db genotype-database :write t)
-      (setf (genotype-db-matrix db) matrix))
-    ;; Read written data back and verify.
-    (with-genotype-db (db genotype-database)
-      (let ((db-matrix (genotype-db-matrix db (genotype-db-current-matrix db))))
+      (let* ((hash (genotype-db-matrix-put db matrix))
+             (db-matrix (genotype-db-matrix db hash)))
+        ;; Read written data back and verify.
         (unless (and (all (lambda (i)
                             (equalp (matrix-row (genotype-matrix-matrix matrix) i)
                                     (genotype-db-matrix-row-ref db-matrix i)))
@@ -345,7 +343,10 @@ list of metadata, with BV. Return the hash."
 This is a bug. Please report it.
 "
                   genotype-database)
-          (uiop:quit 1))))))
+          (uiop:quit 1))
+        ;; Set the current matrix.
+        (setf (genotype-db-current-matrix db)
+              hash)))))
 
 (defun print-genotype-db-info (database-directory)
   (with-genotype-db (db database-directory)
