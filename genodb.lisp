@@ -130,30 +130,14 @@ blob of HASH."
       (lmdb:put db hash bv))
     bv))
 
-(defun genotype-db-metadata-get (db hash)
-  "Get metadata associated with HASH from genotype DB."
-  (mapcar (lambda (key)
-            (cons key
-                  (lmdb:g3t db (metadata-key hash key))))
-          (split ":"
-                 (lmdb:octets-to-string
-                  (lmdb:g3t db (metadata-key hash "metadata"))))))
+(defun genotype-db-metadata-get (db hash key)
+  "Get metadata associated with KEY, HASH from genotype DB."
+  (lmdb:g3t db (metadata-key hash key)))
 
-(defun (setf genotype-db-metadata-get) (metadata db hash)
-  "Associate METADATA, an association list of metadata, with HASH in
-genotype DB."
-  (lmdb:put db
-            (metadata-key hash "metadata")
-            (join ":"
-                  (mapcar (lambda-match
-                           ((cons key value)
-                            (when (or (equal key "metadata")
-                                      (contains? ":" key))
-                              (error 'invalid-metadata-key key))
-                            (lmdb:put db (metadata-key hash key) value)
-                            key))
-                          metadata)))
-  metadata)
+(defun (setf genotype-db-metadata-get) (value db hash key)
+  "Associate metadata KEY, VALUE with HASH in genotype DB."
+  (lmdb:put db (metadata-key hash key) value)
+  value)
 
 (defun genotype-db-current-matrix (db)
   "Return the hash of the current matrix in genotype matrix DB."
@@ -165,14 +149,13 @@ genotype DB."
 
 (defun genotype-db-matrix (db)
   "Return the current matrix from genotype matrix DB."
-  (let* ((hash (genotype-db-current-matrix db))
-         (metadata (genotype-db-metadata-get db hash)))
+  (let ((hash (genotype-db-current-matrix db)))
     (make-genotype-db-matrix
      :db db
      :nrows (lmdb:octets-to-uint64
-             (assoc-ref metadata "nrows"))
+             (genotype-db-metadata-get db hash "nrows"))
      :ncols (lmdb:octets-to-uint64
-             (assoc-ref metadata "ncols")))))
+             (genotype-db-metadata-get db hash "ncols")))))
 
 (defun (setf genotype-db-matrix) (matrix db)
   "Set genotype MATRIX as the current matrix in genotype matrix DB."
@@ -197,11 +180,9 @@ genotype DB."
                                                (t (error 'unknown-genotype-matrix-data))))
                                            (matrix-row matrix i))))
                                stream)))))))
-              (setf (genotype-db-metadata-get db matrix-hash)
-                    `(("nrows" . ,nrows)
-                      ("ncols" . ,ncols)))
-              (setf (genotype-db-current-matrix db)
-                    matrix-hash))))))
+              (setf (genotype-db-metadata-get db matrix-hash "nrows") nrows
+                    (genotype-db-metadata-get db matrix-hash "ncols") ncols
+                    (genotype-db-current-matrix db) matrix-hash))))))
 
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
