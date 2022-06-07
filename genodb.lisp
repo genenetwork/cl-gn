@@ -246,6 +246,19 @@ list of metadata, with BV. Return the hash."
                     :displaced-to (genotype-db-get db (genotype-db-matrix-hash matrix))
                     :displaced-index-offset (* i hash-length)))))))
 
+(defun genotype-db-matrix-column-ref (matrix j)
+  "Return the Jth column of genotype db MATRIX."
+  (let ((db (genotype-db-matrix-db matrix)))
+    (decode-genotype-vector
+     (genotype-db-get
+      db
+      (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
+        (make-array hash-length
+                    :element-type '(unsigned-byte 8)
+                    :displaced-to (genotype-db-get db (genotype-db-matrix-hash matrix))
+                    :displaced-index-offset (* (+ (genotype-db-matrix-nrows matrix) j)
+                                               hash-length)))))))
+
 ;;;
 ;;; Geno files
 ;;;
