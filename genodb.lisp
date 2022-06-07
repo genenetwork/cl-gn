@@ -2,7 +2,7 @@
   (:use :common-lisp)
   (:import-from :alexandria :iota :once-only :with-gensyms)
   (:import-from :ironclad :with-octet-input-stream :with-octet-output-stream)
-  (:import-from :listopia :split-at)
+  (:import-from :listopia :all :split-at)
   (:import-from :str
    :concat :contains? :join :s-rest :split :starts-with?
    :trim-right :words)
@@ -301,11 +301,24 @@ list of metadata, with BV. Return the hash."
 (defun main ()
   (match (uiop:command-line-arguments)
     ((list "import" geno-file genotype-database)
-     (with-genotype-db (db
-                        (fad:pathname-as-directory genotype-database)
-                        :write t)
-       (setf (genotype-db-matrix db)
-             (read-geno-file geno-file))))
+     (let ((matrix (read-geno-file geno-file))
+           (genotype-database (fad:pathname-as-directory genotype-database)))
+       ;; Write genotype matrix into genotype database.
+       (with-genotype-db (db genotype-database :write t)
+         (setf (genotype-db-matrix db) matrix))
+       ;; Read every row back and verify.
+       (with-genotype-db (db genotype-database)
+         (let ((db-matrix (genotype-db-matrix db)))
+           (unless (all (lambda (i)
+                          (equalp (matrix-row (genotype-matrix-matrix matrix) i)
+                                  (genotype-db-matrix-row-ref db-matrix i)))
+                        (iota (genotype-db-matrix-nrows db-matrix)))
+             (format *error-output*
+                     "Rereading and verifying genotype matrix written to \"~a\" failed.
+This is a bug. Please report it.
+"
+                     genotype-database)
+             (uiop:quit 1))))))
     ((list "info" genotype-database)
      (print-genotype-db-info
       (fad:pathname-as-directory genotype-database)))
