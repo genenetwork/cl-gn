@@ -22,6 +22,14 @@
                 :displaced-to matrix
                 :displaced-index-offset (* n ncols))))
 
+(defun matrix-column (matrix n)
+  "Return the Nth column of MATRIX."
+  (let ((column (make-array (array-dimension matrix 0))))
+    (dotimes (i (length column))
+      (setf (aref column i)
+            (aref matrix i n)))
+    column))
+
 (defmacro save-excursion (stream &body body)
   "Evaluate BODY, and restore STREAM to the position it was in before
 evaluation of BODY."
@@ -205,6 +213,11 @@ list of metadata, with BV. Return the hash."
                   (write-sequence
                    (genotype-db-put
                     db (encode-genotype-vector (matrix-row matrix i)))
+                   stream))
+                (dotimes (j ncols)
+                  (write-sequence
+                   (genotype-db-put
+                    db (encode-genotype-vector (matrix-column matrix j)))
                    stream)))
               `(("nrows" . ,nrows)
                 ("ncols" . ,ncols))))))))
