@@ -179,6 +179,18 @@ list of metadata, with BV. Return the hash."
      :ncols (lmdb:octets-to-uint64
              (genotype-db-metadata-get db hash "ncols")))))
 
+(defun encode-genotype-vector (vector)
+  "Encode genotype VECTOR to a bytevector."
+  (map '(vector (unsigned-byte 8))
+       (lambda (genotype)
+         (case genotype
+           ((maternal) 0)
+           ((paternal) 1)
+           ((heterozygous) 2)
+           ((unknown) 3)
+           (t (error 'unknown-genotype-matrix-data))))
+       vector))
+
 (defun (setf genotype-db-matrix) (matrix db)
   "Set genotype MATRIX as the current matrix in genotype matrix DB."
   (let ((matrix (genotype-matrix-matrix matrix)))
@@ -191,16 +203,7 @@ list of metadata, with BV. Return the hash."
                 (dotimes (i nrows)
                   (write-sequence
                    (genotype-db-put
-                    db
-                    (map '(vector (unsigned-byte 8))
-                         (lambda (genotype)
-                           (case genotype
-                             ((maternal) 0)
-                             ((paternal) 1)
-                             ((heterozygous) 2)
-                             ((unknown) 3)
-                             (t (error 'unknown-genotype-matrix-data))))
-                         (matrix-row matrix i)))
+                    db (encode-genotype-vector (matrix-row matrix i)))
                    stream)))
               `(("nrows" . ,nrows)
                 ("ncols" . ,ncols))))))))
