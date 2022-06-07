@@ -177,16 +177,15 @@ list of metadata, with BV. Return the hash."
   "Set HASH as the current matrix in genotype matrix DB."
   (lmdb:put db "current" hash))
 
-(defun genotype-db-matrix (db)
-  "Return the current matrix from genotype matrix DB."
-  (let ((hash (genotype-db-current-matrix db)))
-    (make-genotype-db-matrix
-     :db db
-     :hash hash
-     :nrows (lmdb:octets-to-uint64
-             (genotype-db-metadata-get db hash "nrows"))
-     :ncols (lmdb:octets-to-uint64
-             (genotype-db-metadata-get db hash "ncols")))))
+(defun genotype-db-matrix (db hash)
+  "Return the matrix identified by HASH from genotype matrix DB."
+  (make-genotype-db-matrix
+   :db db
+   :hash hash
+   :nrows (lmdb:octets-to-uint64
+           (genotype-db-metadata-get db hash "nrows"))
+   :ncols (lmdb:octets-to-uint64
+           (genotype-db-metadata-get db hash "ncols"))))
 
 (defun encode-genotype-vector (vector)
   "Encode genotype VECTOR to a bytevector."
@@ -332,7 +331,7 @@ list of metadata, with BV. Return the hash."
       (setf (genotype-db-matrix db) matrix))
     ;; Read written data back and verify.
     (with-genotype-db (db genotype-database)
-      (let ((db-matrix (genotype-db-matrix db)))
+      (let ((db-matrix (genotype-db-matrix db (genotype-db-current-matrix db))))
         (unless (and (all (lambda (i)
                             (equalp (matrix-row (genotype-matrix-matrix matrix) i)
                                     (genotype-db-matrix-row-ref db-matrix i)))
@@ -350,7 +349,7 @@ This is a bug. Please report it.
 
 (defun print-genotype-db-info (database-directory)
   (with-genotype-db (db database-directory)
-    (let ((matrix (genotype-db-matrix db)))
+    (let ((matrix (genotype-db-matrix db (genotype-db-current-matrix db))))
       (format t
               "Path: ~a~%Dimensions: ~a × ~a~%"
               database-directory
