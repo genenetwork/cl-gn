@@ -30,3 +30,6 @@ genotype database `bxd` using
 ```
 ./genodb import BXD.geno bxd
 ```
+If `bxd` does not exist, it is created. If `bxd` already exists and
+contains a matrix, the genotype matrix of `BXD.geno` is stored in
+`bxd` as a new version.

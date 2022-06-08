@@ -172,11 +172,18 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-current-matrix (db)
   "Return the hash of the current matrix in genotype matrix DB."
-  (lmdb:g3t db (string-to-utf-8-bytes "current")))
+  (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
+    (make-array hash-length
+                :element-type '(unsigned-byte 8)
+                :displaced-to (lmdb:g3t db (string-to-utf-8-bytes "current")))))
 
 (defun (setf genotype-db-current-matrix) (hash db)
   "Set HASH as the current matrix in genotype matrix DB."
-  (lmdb:put db (string-to-utf-8-bytes "current") hash))
+  (let ((current (string-to-utf-8-bytes "current")))
+    (lmdb:put db current
+              (concatenate '(vector (unsigned-byte 8))
+                           hash
+                           (lmdb:g3t db current)))))
 
 (defun genotype-db-matrix (db hash)
   "Return the matrix identified by HASH from genotype matrix DB."
