@@ -2,7 +2,7 @@
   (:use :common-lisp)
   (:import-from :alexandria :iota :once-only :with-gensyms)
   (:import-from :ironclad :with-octet-input-stream :with-octet-output-stream)
-  (:import-from :listopia :all :split-at)
+  (:import-from :listopia :all :any :split-at)
   (:import-from :str
    :concat :contains? :join :s-rest :split :starts-with?
    :trim-right :words)
@@ -323,6 +323,38 @@ list of metadata, with BV. Return the hash."
                                 (mapcar #'cons metadata-columns metadata))))
                            nrows)))))))
 
+(defun live-hashes (db)
+  "Return all live hashes in DB."
+  (let ((current-matrix-hash (genotype-db-current-matrix db)))
+    (and current-matrix-hash
+         (let* ((hash-length (ironclad:digest-length *blob-hash-digest*))
+                (current-matrix (genotype-db-matrix db current-matrix-hash))
+                (hashes (genotype-db-get db current-matrix-hash)))
+           (cons (genotype-db-matrix-hash current-matrix)
+                 ;; Hashes of all rows and columns
+                 (mapcar (lambda (i)
+                           (make-array hash-length
+                                       :element-type '(unsigned-byte 8)
+                                       :displaced-to hashes
+                                       :displaced-index-offset (* i hash-length)))
+                         (iota (+ (genotype-db-matrix-nrows current-matrix)
+                                  (genotype-db-matrix-ncols current-matrix)))))))))
+
+(defun collect-garbage (db)
+  "Delete all keys in DB that are not associated with a live hash."
+  (let ((live-hashes (live-hashes db)))
+    (lmdb:with-cursor (cursor db)
+      (lmdb:cursor-first cursor)
+      (lmdb:do-cursor (key value cursor)
+        (unless (or (equalp key (string-to-utf-8-bytes "current"))
+                    (any (lambda (hash)
+                           (equalp hash
+                                   (make-array (length hash)
+                                               :element-type '(unsigned-byte 8)
+                                               :displaced-to key)))
+                         live-hashes))
+          (lmdb:cursor-del cursor))))))
+
 (defun import-into-genotype-db (geno-file genotype-database)
   "Import GENO-FILE into GENOTYPE-DATABASE."
   (let ((matrix (read-geno-file geno-file)))
@@ -339,6 +371,9 @@ list of metadata, with BV. Return the hash."
                             (equalp (matrix-column (genotype-matrix-matrix matrix) i)
                                     (genotype-db-matrix-column-ref db-matrix i)))
                           (iota (genotype-db-matrix-ncols db-matrix))))
+          ;; Roll back database updates.
+          (collect-garbage db)
+          ;; Exit with error message.
           (format *error-output*
                   "Rereading and verifying genotype matrix written to \"~a\" failed.
 This is a bug. Please report it.
