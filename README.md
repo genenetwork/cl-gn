@@ -33,3 +33,9 @@ genotype database `bxd` using
 If `bxd` does not exist, it is created. If `bxd` already exists and
 contains a matrix, the genotype matrix of `BXD.geno` is stored in
 `bxd` as a new version.
+
+Print meta-information and list versions stored in a genotype database
+`bxd` using
+```
+./genodb info bxd
+```
