@@ -407,9 +407,11 @@ This is a bug. Please report it.
 (defun print-genotype-db-info (database-directory)
   (with-genotype-db (db database-directory)
     (format t
-            "Path: ~a~%Versions: ~a~%~%"
+            "Path: ~a~%Versions: ~a~%Keys: ~a~%~%"
             database-directory
-            (length (genotype-db-all-matrices db)))
+            (length (genotype-db-all-matrices db))
+            (getf (lmdb:db-statistics db)
+                  :entries))
     (for-each-indexed (lambda (i matrix)
                         (format t "Version ~a
   Dimensions: ~a × ~a~%"
