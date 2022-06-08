@@ -420,9 +420,6 @@ This is a bug. Please report it.
                                 (genotype-db-matrix-ncols matrix)))
                       (genotype-db-all-matrices db))))
 
-(with-color (:white :effect :bright)
-  (format t "foo"))
-
 (defun main ()
   (match (uiop:command-line-arguments)
     ((list "import" geno-file genotype-database)
