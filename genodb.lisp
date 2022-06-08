@@ -185,6 +185,19 @@ list of metadata, with BV. Return the hash."
                            hash
                            (lmdb:g3t db current)))))
 
+(defun genotype-db-all-matrices (db)
+  "Return a list of all matrices in DB, newest first."
+  (let ((hash-length (ironclad:digest-length *blob-hash-digest*))
+        (all-matrix-hashes (lmdb:g3t db (string-to-utf-8-bytes "current"))))
+    (mapcar (lambda (i)
+              (genotype-db-matrix db
+                                  (make-array hash-length
+                                              :element-type '(unsigned-byte 8)
+                                              :displaced-to all-matrix-hashes
+                                              :displaced-index-offset (* i hash-length))))
+            (iota (/ (length all-matrix-hashes)
+                     hash-length)))))
+
 (defun genotype-db-matrix (db hash)
   "Return the matrix identified by HASH from genotype matrix DB."
   (make-genotype-db-matrix
@@ -393,12 +406,20 @@ This is a bug. Please report it.
 
 (defun print-genotype-db-info (database-directory)
   (with-genotype-db (db database-directory)
-    (let ((matrix (genotype-db-matrix db (genotype-db-current-matrix db))))
-      (format t
-              "Path: ~a~%Dimensions: ~a × ~a~%"
-              database-directory
-              (genotype-db-matrix-nrows matrix)
-              (genotype-db-matrix-ncols matrix)))))
+    (format t
+            "Path: ~a~%Versions: ~a~%~%"
+            database-directory
+            (length (genotype-db-all-matrices db)))
+    (for-each-indexed (lambda (i matrix)
+                        (format t "Version ~a
+  Dimensions: ~a × ~a~%"
+                                (1+ i)
+                                (genotype-db-matrix-nrows matrix)
+                                (genotype-db-matrix-ncols matrix)))
+                      (genotype-db-all-matrices db))))
+
+(with-color (:white :effect :bright)
+  (format t "foo"))
 
 (defun main ()
   (match (uiop:command-line-arguments)
