@@ -33,7 +33,9 @@
                 "Hello World!")))))
 
 (defvar *acceptor*
-  (make-instance 'hunchentoot:easy-acceptor :port 8080))
+  (make-instance 'hunchentoot:easy-acceptor
+                 :address "localhost"
+                 :port 8080))
 
 (defun main ()
   (hunchentoot:start *acceptor*))
