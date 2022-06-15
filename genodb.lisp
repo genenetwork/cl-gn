@@ -101,7 +101,7 @@ invoked as (FUNCTION INDEX) for INDEX = 0, 1, 2, ..., n-1."
   matrix metadata)
 
 (defstruct genotype-db-matrix
-  db hash nrows ncols)
+  db hash nrows ncols row-pointers column-pointers)
 
 (defmacro with-genotype-db ((db database-directory &key write) &body body)
   (with-gensyms (env)
@@ -219,13 +219,23 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-matrix (db hash)
   "Return the matrix identified by HASH from genotype matrix DB."
-  (make-genotype-db-matrix
-   :db db
-   :hash hash
-   :nrows (lmdb:octets-to-uint64
-           (genotype-db-metadata-get db hash "nrows"))
-   :ncols (lmdb:octets-to-uint64
-           (genotype-db-metadata-get db hash "ncols"))))
+  (let ((nrows (lmdb:octets-to-uint64
+                (genotype-db-metadata-get db hash "nrows")))
+        (ncols (lmdb:octets-to-uint64
+                (genotype-db-metadata-get db hash "ncols")))
+        (hash-length (ironclad:digest-length *blob-hash-digest*)))
+    (make-genotype-db-matrix
+     :db db
+     :hash hash
+     :nrows nrows
+     :ncols ncols
+     :row-pointers (make-array (* nrows hash-length)
+                               :element-type '(unsigned-byte 8)
+                               :displaced-to (genotype-db-get db hash))
+     :column-pointers (make-array (* ncols hash-length)
+                                  :element-type '(unsigned-byte 8)
+                                  :displaced-to (genotype-db-get db hash)
+                                  :displaced-index-offset (* nrows hash-length)))))
 
 (defun encode-genotype-vector (vector)
   "Encode genotype VECTOR to a bytevector."
@@ -274,28 +284,29 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
-  (let ((db (genotype-db-matrix-db matrix)))
+  (let ((db (genotype-db-matrix-db matrix))
+        (row-pointers (genotype-db-matrix-row-pointers matrix)))
     (decode-genotype-vector
      (genotype-db-get
       db
       (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
         (make-array hash-length
                     :element-type '(unsigned-byte 8)
-                    :displaced-to (genotype-db-get db (genotype-db-matrix-hash matrix))
+                    :displaced-to row-pointers
                     :displaced-index-offset (* i hash-length)))))))
 
 (defun genotype-db-matrix-column-ref (matrix j)
   "Return the Jth column of genotype db MATRIX."
-  (let ((db (genotype-db-matrix-db matrix)))
+  (let ((db (genotype-db-matrix-db matrix))
+        (column-pointers (genotype-db-matrix-column-pointers matrix)))
     (decode-genotype-vector
      (genotype-db-get
       db
       (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
         (make-array hash-length
                     :element-type '(unsigned-byte 8)
-                    :displaced-to (genotype-db-get db (genotype-db-matrix-hash matrix))
-                    :displaced-index-offset (* (+ (genotype-db-matrix-nrows matrix) j)
-                                               hash-length)))))))
+                    :displaced-to column-pointers
+                    :displaced-index-offset (* j hash-length)))))))
 
 ;;;
 ;;; Geno files
