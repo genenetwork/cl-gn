@@ -179,11 +179,30 @@ list of metadata, with BV. Return the hash."
 
 (defun (setf genotype-db-current-matrix) (hash db)
   "Set HASH as the current matrix in genotype matrix DB."
+  ;; Prepend hash onto versions array.
   (let ((versions (string-to-utf-8-bytes "versions")))
     (lmdb:put db versions
               (concatenate '(vector (unsigned-byte 8))
                            hash
-                           (lmdb:g3t db versions)))))
+                           (lmdb:g3t db versions))))
+  ;; Write a read-optimized copy of current matrix into the database.
+  (let ((matrix (genotype-db-matrix db hash)))
+    (lmdb:put db
+              (string-to-utf-8-bytes "current")
+              (genotype-db-put
+               db
+               (with-octet-output-stream (stream)
+                 (dotimes (i (genotype-db-matrix-nrows matrix))
+                   (write-sequence
+                    (encode-genotype-vector
+                     (genotype-db-matrix-row-ref matrix i))
+                    stream))
+                 (dotimes (i (genotype-db-matrix-ncols matrix))
+                   (write-sequence
+                    (encode-genotype-vector
+                     (genotype-db-matrix-column-ref matrix i))
+                    stream)))
+               `(("matrix" . ,hash))))))
 
 (defun genotype-db-all-matrices (db)
   "Return a list of all matrices in DB, newest first."
