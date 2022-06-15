@@ -175,20 +175,20 @@ list of metadata, with BV. Return the hash."
   (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
     (make-array hash-length
                 :element-type '(unsigned-byte 8)
-                :displaced-to (lmdb:g3t db (string-to-utf-8-bytes "current")))))
+                :displaced-to (lmdb:g3t db (string-to-utf-8-bytes "versions")))))
 
 (defun (setf genotype-db-current-matrix) (hash db)
   "Set HASH as the current matrix in genotype matrix DB."
-  (let ((current (string-to-utf-8-bytes "current")))
-    (lmdb:put db current
+  (let ((versions (string-to-utf-8-bytes "versions")))
+    (lmdb:put db versions
               (concatenate '(vector (unsigned-byte 8))
                            hash
-                           (lmdb:g3t db current)))))
+                           (lmdb:g3t db versions)))))
 
 (defun genotype-db-all-matrices (db)
   "Return a list of all matrices in DB, newest first."
   (let ((hash-length (ironclad:digest-length *blob-hash-digest*))
-        (all-matrix-hashes (lmdb:g3t db (string-to-utf-8-bytes "current"))))
+        (all-matrix-hashes (lmdb:g3t db (string-to-utf-8-bytes "versions"))))
     (mapcar (lambda (i)
               (genotype-db-matrix db
                                   (make-array hash-length
@@ -366,7 +366,7 @@ list of metadata, with BV. Return the hash."
     (lmdb:with-cursor (cursor db)
       (lmdb:cursor-first cursor)
       (lmdb:do-cursor (key value cursor)
-        (unless (or (equalp key (string-to-utf-8-bytes "current"))
+        (unless (or (equalp key (string-to-utf-8-bytes "versions"))
                     (any (lambda (hash)
                            (equalp hash
                                    (make-array (length hash)
