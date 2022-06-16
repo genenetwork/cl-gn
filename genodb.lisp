@@ -170,14 +170,14 @@ list of metadata, with BV. Return the hash."
   "Get metadata associated with KEY, HASH from genotype DB."
   (lmdb:g3t db (metadata-key hash key)))
 
-(defun genotype-db-current-matrix (db)
+(defun genotype-db-current-matrix-hash (db)
   "Return the hash of the current matrix in genotype matrix DB."
   (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
     (make-array hash-length
                 :element-type '(unsigned-byte 8)
                 :displaced-to (lmdb:g3t db (string-to-utf-8-bytes "versions")))))
 
-(defun (setf genotype-db-current-matrix) (hash db)
+(defun (setf genotype-db-current-matrix-hash) (hash db)
   "Set HASH as the current matrix in genotype matrix DB."
   ;; Prepend hash onto versions array.
   (let ((versions (string-to-utf-8-bytes "versions")))
@@ -375,7 +375,7 @@ list of metadata, with BV. Return the hash."
 
 (defun live-hashes (db)
   "Return all live hashes in DB."
-  (let ((current-matrix-hash (genotype-db-current-matrix db)))
+  (let ((current-matrix-hash (genotype-db-current-matrix-hash db)))
     (and current-matrix-hash
          (let* ((hash-length (ironclad:digest-length *blob-hash-digest*))
                 (current-matrix (genotype-db-matrix db current-matrix-hash))
@@ -431,7 +431,7 @@ This is a bug. Please report it.
                   genotype-database)
           (uiop:quit 1))
         ;; Set the current matrix.
-        (setf (genotype-db-current-matrix db)
+        (setf (genotype-db-current-matrix-hash db)
               hash)))))
 
 (defun print-genotype-db-info (database-directory)
