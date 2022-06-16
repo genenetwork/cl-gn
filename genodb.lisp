@@ -171,9 +171,13 @@ string keys to string, uint64 or bytevector values."
                 :displaced-to hash-vector
                 :displaced-index-offset (* n hash-length))))
 
-(defun genotype-db-get (db hash)
-  "Get bytevector with HASH from genotype DB."
-  (lmdb:g3t db hash))
+(defun genotype-db-get (db key)
+  "Get bytevector with KEY from genotype DB. KEY may be a hash or a
+string. If it is a string, it is encoded into octets before querying
+the database."
+  (lmdb:g3t db (if (stringp key)
+                   (string-to-utf-8-bytes key)
+                   key)))
 
 (defun genotype-db-put (db bv &optional metadata)
   "Put BV, a bytevector, into DB. Associate METADATA, an association
@@ -191,21 +195,20 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-metadata-get (db hash key)
   "Get metadata associated with KEY, HASH from genotype DB."
-  (lmdb:g3t db (metadata-key hash key)))
+  (genotype-db-get db (metadata-key hash key)))
 
 (defun genotype-db-current-matrix-hash (db)
   "Return the hash of the current matrix in genotype matrix DB."
-  (hash-vector-ref (genotype-db-get db (string-to-utf-8-bytes "versions"))
+  (hash-vector-ref (genotype-db-get db "versions")
                    0))
 
 (defun (setf genotype-db-current-matrix-hash) (hash db)
   "Set HASH as the current matrix in genotype matrix DB."
   ;; Prepend hash onto versions array.
-  (let ((versions (string-to-utf-8-bytes "versions")))
-    (lmdb:put db versions
-              (concatenate '(vector (unsigned-byte 8))
-                           hash
-                           (lmdb:g3t db versions))))
+  (lmdb:put db (string-to-utf-8-bytes "versions")
+            (concatenate '(vector (unsigned-byte 8))
+                         hash
+                         (genotype-db-get db "versions")))
   ;; Write a read-optimized copy of current matrix into the database.
   (let ((matrix (genotype-db-matrix db hash)))
     (lmdb:put db
@@ -227,7 +230,7 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-all-matrices (db)
   "Return a list of all matrices in DB, newest first."
-  (let ((all-matrix-hashes (lmdb:g3t db (string-to-utf-8-bytes "versions"))))
+  (let ((all-matrix-hashes (genotype-db-get db "versions")))
     (mapcar (lambda (i)
               (genotype-db-matrix db (hash-vector-ref all-matrix-hashes i)))
             (iota (hash-vector-length all-matrix-hashes)))))
@@ -387,9 +390,8 @@ list of metadata, with BV. Return the hash."
   "Return non-nil if KEY is live. Else, return nil."
   (or (equalp key (string-to-utf-8-bytes "current"))
       (equalp key (string-to-utf-8-bytes "versions"))
-      (equalp key (genotype-db-get db (string-to-utf-8-bytes "current")))
-      (let ((versions-hash-vector
-              (genotype-db-get db (string-to-utf-8-bytes "versions")))
+      (equalp key (genotype-db-get db "current"))
+      (let ((versions-hash-vector (genotype-db-get db "versions"))
             (key-hash-prefix (make-array (ironclad:digest-length *blob-hash-digest*)
                                          :element-type '(unsigned-byte 8)
                                          :displaced-to key)))
