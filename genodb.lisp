@@ -376,37 +376,37 @@ list of metadata, with BV. Return the hash."
                                 (mapcar #'cons metadata-columns metadata))))
                            nrows)))))))
 
-(defun live-hashes (db)
-  "Return all live hashes in DB."
-  (let ((current-matrix-hash (genotype-db-current-matrix-hash db)))
-    (and current-matrix-hash
-         (let* ((hash-length (ironclad:digest-length *blob-hash-digest*))
-                (current-matrix (genotype-db-matrix db current-matrix-hash))
-                (hashes (genotype-db-get db current-matrix-hash)))
-           (cons (genotype-db-matrix-hash current-matrix)
-                 ;; Hashes of all rows and columns
-                 (mapcar (lambda (i)
-                           (make-array hash-length
-                                       :element-type '(unsigned-byte 8)
-                                       :displaced-to hashes
-                                       :displaced-index-offset (* i hash-length)))
-                         (iota (+ (genotype-db-matrix-nrows current-matrix)
-                                  (genotype-db-matrix-ncols current-matrix)))))))))
+(defun hash-in-hash-vector-p (hash hash-vector)
+  "Return non-nil if HASH is in HASH-VECTOR. Else, return nil."
+  (find-index (lambda (i)
+                (equalp (hash-vector-ref hash-vector i)
+                        hash))
+              (hash-vector-length hash-vector)))
+
+(defun live-key-p (db key)
+  "Return non-nil if KEY is live. Else, return nil."
+  (or (equalp key (string-to-utf-8-bytes "current"))
+      (equalp key (string-to-utf-8-bytes "versions"))
+      (equalp key (genotype-db-get db (string-to-utf-8-bytes "current")))
+      (let ((versions-hash-vector
+              (genotype-db-get db (string-to-utf-8-bytes "versions")))
+            (key-hash-prefix (make-array (ironclad:digest-length *blob-hash-digest*)
+                                         :element-type '(unsigned-byte 8)
+                                         :displaced-to key)))
+        (or (hash-in-hash-vector-p key-hash-prefix versions-hash-vector)
+            (find-index (lambda (i)
+                          (hash-in-hash-vector-p
+                           key-hash-prefix
+                           (genotype-db-get db (hash-vector-ref versions-hash-vector i))))
+                        (hash-vector-length versions-hash-vector))))))
 
 (defun collect-garbage (db)
   "Delete all keys in DB that are not associated with a live hash."
-  (let ((live-hashes (live-hashes db)))
-    (lmdb:with-cursor (cursor db)
-      (lmdb:cursor-first cursor)
-      (lmdb:do-cursor (key value cursor)
-        (unless (or (equalp key (string-to-utf-8-bytes "versions"))
-                    (any (lambda (hash)
-                           (equalp hash
-                                   (make-array (length hash)
-                                               :element-type '(unsigned-byte 8)
-                                               :displaced-to key)))
-                         live-hashes))
-          (lmdb:cursor-del cursor))))))
+  (lmdb:with-cursor (cursor db)
+    (lmdb:cursor-first cursor)
+    (lmdb:do-cursor (key value cursor)
+      (unless (live-key-p db key)
+        (lmdb:cursor-del cursor)))))
 
 (defun import-into-genotype-db (geno-file genotype-database)
   "Import GENO-FILE into GENOTYPE-DATABASE."
