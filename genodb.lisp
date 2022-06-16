@@ -217,15 +217,11 @@ list of metadata, with BV. Return the hash."
                db
                (with-octet-output-stream (stream)
                  (dotimes (i (genotype-db-matrix-nrows matrix))
-                   (write-sequence
-                    (encode-genotype-vector
-                     (genotype-db-matrix-row-ref matrix i))
-                    stream))
+                   (write-sequence (genotype-db-matrix-row-ref matrix i)
+                                   stream))
                  (dotimes (i (genotype-db-matrix-ncols matrix))
-                   (write-sequence
-                    (encode-genotype-vector
-                     (genotype-db-matrix-column-ref matrix i))
-                    stream)))
+                   (write-sequence (genotype-db-matrix-column-ref matrix i)
+                                   stream)))
                `(("matrix" . ,hash))))))
 
 (defun genotype-db-all-matrices (db)
@@ -255,18 +251,6 @@ list of metadata, with BV. Return the hash."
                                   :displaced-to (genotype-db-get db hash)
                                   :displaced-index-offset (* nrows hash-length)))))
 
-(defun encode-genotype-vector (vector)
-  "Encode genotype VECTOR to a bytevector."
-  (map '(vector (unsigned-byte 8))
-       (lambda (genotype)
-         (case genotype
-           ((maternal) 0)
-           ((paternal) 1)
-           ((heterozygous) 2)
-           ((unknown) 3)
-           (t (error 'unknown-genotype-matrix-data))))
-       vector))
-
 (defun genotype-db-matrix-put (db matrix)
   "Put genotype MATRIX into DB and return the hash."
   (let ((matrix (genotype-matrix-matrix matrix)))
@@ -276,43 +260,26 @@ list of metadata, with BV. Return the hash."
         db
         (with-octet-output-stream (stream)
           (dotimes (i nrows)
-            (write-sequence
-             (genotype-db-put
-              db (encode-genotype-vector (matrix-row matrix i)))
-             stream))
+            (write-sequence (genotype-db-put db (matrix-row matrix i))
+                            stream))
           (dotimes (j ncols)
-            (write-sequence
-             (genotype-db-put
-              db (encode-genotype-vector (matrix-column matrix j)))
-             stream)))
+            (write-sequence (genotype-db-put db (matrix-column matrix j))
+                            stream)))
         `(("nrows" . ,nrows)
           ("ncols" . ,ncols)))))))
 
-(defun decode-genotype-vector (bv)
-  "Decode BV to genotype vector."
-  (map 'vector
-       (lambda (integer)
-         (case integer
-           ((0) 'maternal)
-           ((1) 'paternal)
-           ((2) 'heterozygous)
-           ((3) 'unknown)
-           (t (error 'unknown-genotype-matrix-data))))
-       bv))
 
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
   (let ((db (genotype-db-matrix-db matrix))
         (row-pointers (genotype-db-matrix-row-pointers matrix)))
-    (decode-genotype-vector
-     (genotype-db-get db (hash-vector-ref row-pointers i)))))
+    (genotype-db-get db (hash-vector-ref row-pointers i))))
 
 (defun genotype-db-matrix-column-ref (matrix j)
   "Return the Jth column of genotype db MATRIX."
   (let ((db (genotype-db-matrix-db matrix))
         (column-pointers (genotype-db-matrix-column-pointers matrix)))
-    (decode-genotype-vector
-     (genotype-db-get db (hash-vector-ref column-pointers j)))))
+    (genotype-db-get db (hash-vector-ref column-pointers j))))
 
 ;;;
 ;;; Geno files
@@ -367,14 +334,10 @@ list of metadata, with BV. Return the hash."
                                 (for-each-indexed (lambda (j element)
                                                     (setf (aref matrix i j)
                                                           (cond
-                                                            ((string= element maternal)
-                                                             'maternal)
-                                                            ((string= element paternal)
-                                                             'paternal)
-                                                            ((string= element heterozygous)
-                                                             'heterozygous)
-                                                            ((string= element unknown)
-                                                             'unknown))))
+                                                            ((string= element maternal) 0)
+                                                            ((string= element paternal) 1)
+                                                            ((string= element heterozygous) 2)
+                                                            ((string= element unknown) 3))))
                                                   data)
                                 (mapcar #'cons metadata-columns metadata))))
                            nrows)))))))
