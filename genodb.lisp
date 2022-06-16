@@ -158,6 +158,19 @@ string keys to string, uint64 or bytevector values."
               stream)))
           metadata)))
 
+(defun hash-vector-length (hash-vector)
+  "Return the number of hashes in HASH-VECTOR."
+  (/ (length hash-vector)
+     (ironclad:digest-length *blob-hash-digest*)))
+
+(defun hash-vector-ref (hash-vector n)
+  "Return the Nth hash in HASH-VECTOR."
+  (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
+    (make-array hash-length
+                :element-type '(unsigned-byte 8)
+                :displaced-to hash-vector
+                :displaced-index-offset (* n hash-length))))
+
 (defun genotype-db-get (db hash)
   "Get bytevector with HASH from genotype DB."
   (lmdb:g3t db hash))
@@ -182,10 +195,8 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-current-matrix-hash (db)
   "Return the hash of the current matrix in genotype matrix DB."
-  (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
-    (make-array hash-length
-                :element-type '(unsigned-byte 8)
-                :displaced-to (lmdb:g3t db (string-to-utf-8-bytes "versions")))))
+  (hash-vector-ref (genotype-db-get db (string-to-utf-8-bytes "versions"))
+                   0))
 
 (defun (setf genotype-db-current-matrix-hash) (hash db)
   "Set HASH as the current matrix in genotype matrix DB."
@@ -216,16 +227,10 @@ list of metadata, with BV. Return the hash."
 
 (defun genotype-db-all-matrices (db)
   "Return a list of all matrices in DB, newest first."
-  (let ((hash-length (ironclad:digest-length *blob-hash-digest*))
-        (all-matrix-hashes (lmdb:g3t db (string-to-utf-8-bytes "versions"))))
+  (let ((all-matrix-hashes (lmdb:g3t db (string-to-utf-8-bytes "versions"))))
     (mapcar (lambda (i)
-              (genotype-db-matrix db
-                                  (make-array hash-length
-                                              :element-type '(unsigned-byte 8)
-                                              :displaced-to all-matrix-hashes
-                                              :displaced-index-offset (* i hash-length))))
-            (iota (/ (length all-matrix-hashes)
-                     hash-length)))))
+              (genotype-db-matrix db (hash-vector-ref all-matrix-hashes i)))
+            (iota (hash-vector-length all-matrix-hashes)))))
 
 (defun genotype-db-matrix (db hash)
   "Return the matrix identified by HASH from genotype matrix DB."
@@ -297,26 +302,14 @@ list of metadata, with BV. Return the hash."
   (let ((db (genotype-db-matrix-db matrix))
         (row-pointers (genotype-db-matrix-row-pointers matrix)))
     (decode-genotype-vector
-     (genotype-db-get
-      db
-      (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
-        (make-array hash-length
-                    :element-type '(unsigned-byte 8)
-                    :displaced-to row-pointers
-                    :displaced-index-offset (* i hash-length)))))))
+     (genotype-db-get db (hash-vector-ref row-pointers i)))))
 
 (defun genotype-db-matrix-column-ref (matrix j)
   "Return the Jth column of genotype db MATRIX."
   (let ((db (genotype-db-matrix-db matrix))
         (column-pointers (genotype-db-matrix-column-pointers matrix)))
     (decode-genotype-vector
-     (genotype-db-get
-      db
-      (let ((hash-length (ironclad:digest-length *blob-hash-digest*)))
-        (make-array hash-length
-                    :element-type '(unsigned-byte 8)
-                    :displaced-to column-pointers
-                    :displaced-index-offset (* j hash-length)))))))
+     (genotype-db-get db (hash-vector-ref column-pointers j)))))
 
 ;;;
 ;;; Geno files
