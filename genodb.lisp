@@ -93,6 +93,16 @@ invoked as (FUNCTION INDEX) for INDEX = 0, 1, 2, ..., n-1."
                                                       result)))))
     (reverse (repeat-tail function 0 n (list)))))
 
+(defun find-index (function n)
+  "Return the index between 0 and n-1 (both inclusive) for which
+FUNCTION returns non-nil. If no such index exists, return
+nil. FUNCTION is invoked as (FUNCTION INDEX). The order of invocation
+of FUNCTION is unspecified."
+  (unless (zerop n)
+    (if (funcall function (1- n))
+        (1- n)
+        (find-index function (1- n)))))
+
 ;;;
 ;;; Genotype database and matrix
 ;;;
