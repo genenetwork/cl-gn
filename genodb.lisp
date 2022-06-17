@@ -20,6 +20,7 @@
   "Return the Nth row of MATRIX."
   (let ((ncols (array-dimension matrix 1)))
     (make-array ncols
+                :element-type (array-element-type matrix)
                 :displaced-to matrix
                 :displaced-index-offset (* n ncols))))
 
