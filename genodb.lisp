@@ -8,7 +8,15 @@
    :trim-right :words)
   (:import-from :trivia :lambda-match :match)
   (:import-from :trivial-utf-8 :string-to-utf-8-bytes)
-  (:export :main))
+  (:export
+   :genotype-db-current-matrix
+   :genotype-db-matrix
+   :genotype-db-matrix-ref
+   :genotype-db-matrix-row-ref
+   :genotype-db-matrix-column-ref
+   :main
+   :read-geno-file
+   :with-genotype-db))
 
 (in-package :genodb)
 
