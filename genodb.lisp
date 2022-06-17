@@ -112,7 +112,7 @@ of FUNCTION is unspecified."
   matrix metadata)
 
 (defstruct genotype-db-matrix
-  db hash nrows ncols row-pointers column-pointers)
+  db hash nrows ncols row-pointers column-pointers array transpose)
 
 (defmacro with-genotype-db ((db database-directory &key write) &body body)
   (with-gensyms (env)
@@ -269,18 +269,44 @@ list of metadata, with BV. Return the hash."
         `(("nrows" . ,nrows)
           ("ncols" . ,ncols)))))))
 
+(defun genotype-db-current-matrix (db)
+  "Return the latest version of the matrix in DB."
+  (let* ((read-optimized-blob (genotype-db-get db (genotype-db-get db "current")))
+         (current-matrix-hash (genotype-db-current-matrix-hash db))
+         (nrows (lmdb:octets-to-uint64
+                 (genotype-db-metadata-get db current-matrix-hash "nrows")))
+         (ncols (lmdb:octets-to-uint64
+                 (genotype-db-metadata-get db current-matrix-hash "ncols"))))
+    (make-genotype-db-matrix
+     :db db
+     :nrows nrows
+     :ncols ncols
+     :array (make-array (list nrows ncols)
+                        :element-type '(unsigned-byte 8)
+                        :displaced-to read-optimized-blob)
+     :transpose (make-array (list ncols nrows)
+                            :element-type '(unsigned-byte 8)
+                            :displaced-to read-optimized-blob))))
 
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
   (let ((db (genotype-db-matrix-db matrix))
-        (row-pointers (genotype-db-matrix-row-pointers matrix)))
-    (genotype-db-get db (hash-vector-ref row-pointers i))))
+        (array (genotype-db-matrix-array matrix)))
+    (if array
+        (matrix-row array i)
+        (genotype-db-get
+         db
+         (hash-vector-ref (genotype-db-matrix-row-pointers matrix) i)))))
 
 (defun genotype-db-matrix-column-ref (matrix j)
   "Return the Jth column of genotype db MATRIX."
   (let ((db (genotype-db-matrix-db matrix))
-        (column-pointers (genotype-db-matrix-column-pointers matrix)))
-    (genotype-db-get db (hash-vector-ref column-pointers j))))
+        (transpose (genotype-db-matrix-transpose matrix)))
+    (if transpose
+        (matrix-row transpose j)
+        (genotype-db-get
+         db (hash-vector-ref (genotype-db-matrix-column-pointers matrix)
+                             j)))))
 
 ;;;
 ;;; Geno files
