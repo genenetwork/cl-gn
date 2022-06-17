@@ -288,6 +288,22 @@ list of metadata, with BV. Return the hash."
                             :element-type '(unsigned-byte 8)
                             :displaced-to read-optimized-blob))))
 
+(defun genotype-db-matrix-ref (matrix)
+  "Return MATRIX as a 2-dimensional array."
+  (let ((array (genotype-db-matrix-array matrix)))
+    (if array
+        array
+        (let* ((nrows (genotype-db-matrix-nrows matrix))
+               (ncols (genotype-db-matrix-ncols matrix))
+               (array (make-array (list nrows ncols)
+                                  :element-type '(unsigned-byte 8))))
+          (dotimes (i nrows)
+            (let ((row (genotype-db-matrix-row-ref matrix i)))
+              (dotimes (j ncols)
+                (setf (aref array i j)
+                      (aref row j)))))
+          array))))
+
 (defun genotype-db-matrix-row-ref (matrix i)
   "Return the Ith row of genotype db MATRIX."
   (let ((db (genotype-db-matrix-db matrix))
