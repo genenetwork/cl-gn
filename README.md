@@ -20,11 +20,18 @@ RET`. Happy Hacking!
 
 ## genodb genotype database tool
 
+### Building and running tests
 This repo also includes the genodb CLI tool to manipulate
 GeneNetwork's genotype databases. To build it, run
 ```
 sbcl --load build.lisp
 ```
+To run tests, run
+```
+sbcl --script tests.lisp
+```
+
+### Usage
 Convert a plain text GeneNetwork genotype file `BXD.geno` to a genodb
 genotype database `bxd` using
 ```

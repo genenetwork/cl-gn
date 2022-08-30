@@ -5,6 +5,7 @@
        "sbcl-cl-json"
        "sbcl-cl-str"
        "sbcl-cl-who"
+       "sbcl-fiveam"
        "sbcl-hunchentoot"
        "sbcl-ironclad"
        "sbcl-legit"
