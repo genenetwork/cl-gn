@@ -10,6 +10,10 @@ Drop into a development environment with
 ```
 guix shell
 ```
+or for a container the more verbose
+```
+guix shell -C -D -m manifest.scm
+```
 Start the GeneNetwork web server (listening on port 8080) and the slynk REPL server
 (listening on port 4005) using
 ```
@@ -37,12 +41,19 @@ genotype database `bxd` using
 ```
 ./genodb import BXD.geno bxd
 ```
-If `bxd` does not exist, it is created. If `bxd` already exists and
-contains a matrix, the genotype matrix of `BXD.geno` is stored in
-`bxd` as a new version.
+If the `bxd` database does not exist, it is created as a directory containing .mdb files.
+If `bxd` already exists and contains a matrix, the genotype matrix of `BXD.geno` is stored in `bxd` as a new version.
 
 Print meta-information and list versions stored in a genotype database
 `bxd` using
 ```
 ./genodb info bxd
+Path: bxd/
+Versions: 1
+Keys: 5606
+
+Version 1
+  Dimensions: 7321 × 236
 ```
+
+If you add the same file you'll see the database won't grow, even though it contains two identical copies. That is because genodb deduplicates rows.
